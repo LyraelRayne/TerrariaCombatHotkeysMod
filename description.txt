@@ -1,0 +1,10 @@
+Combat Hotkeys adds four hotkeys that allow quick-using of the last 4 items on the hotbar.
+
+Default key bindings are "C", "X", "Z", "Q".
+
+Mounts don't seem to work at the moment, other item types may also fail.
+
+Currently known to work with placeable items and (AFAIK) all kinds of weapon.
+
+Note: Setting the hotkeys to number keys will prevent the mod from restoring your original item selection because Terraria hard-codes the number keys even if you turn off the keybind.
+

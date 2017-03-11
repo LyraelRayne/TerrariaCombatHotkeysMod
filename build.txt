@@ -1,0 +1,7 @@
+author = LyraelRayne
+version = 1.0
+displayName = Combat Hotkeys
+hideCode = false
+hideResources = false
+includeSource = true
+buildIgnore = *.csproj, *.user, obj\*, bin\*, .vs\*, *.sln, .git\*
