@@ -1,5 +1,9 @@
-﻿using System;
+﻿using CombatHotkeys;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using Terraria;
 using Terraria.GameInput;
 using Terraria.ModLoader;
@@ -48,7 +52,7 @@ namespace CombatHotkeys
         /// <summary>
         /// The item currently selected by the player.
         /// </summary>
-        private int SelectedItem
+        private int SelectedSlot
         {
             get
             {
@@ -67,7 +71,7 @@ namespace CombatHotkeys
         {
             get
             {
-                return this.queuedSlot > -1;
+                return inputStack.Count > 0;
             }
         }
 
@@ -93,14 +97,6 @@ namespace CombatHotkeys
             }
         }
 
-        /// <summary>
-        /// Whether or not a reusable item has been used since we started hotkeying.
-        /// </summary>
-        private bool HasLastReusableSlot
-        {
-            get { return lastReusableSlot > -1; }
-        }
-
         private Item[] Inventory
         {
             get
@@ -109,21 +105,10 @@ namespace CombatHotkeys
             }
         }
 
-
         /// <summary>
-        /// The slot to use next.
+        /// LIFO queue containing most recent valid inputs.
         /// </summary>
-        private int queuedSlot = -1;
-
-        /// <summary>
-        /// The last slot which was used.
-        /// </summary>
-        private int lastUsedSlot = -1;
-
-        /// <summary>
-        /// Last reusable (autoswing) item slot that was used.
-        /// </summary>
-        private int lastReusableSlot = -1;
+        private Stack<int> inputStack = new Stack<int>(5);
 
 
         public override void ProcessTriggers(TriggersSet triggersSet)
@@ -138,31 +123,55 @@ namespace CombatHotkeys
 
         public override bool PreItemCheck()
         {
-            // If the player is already using an item via normal means, update the last used slot.
-            if (player.controlUseItem)
-                lastUsedSlot = SelectedItem;
+            var slotDefs = getMod().slotDefs;
+            var slotItems = slotDefs.Select(slot => Inventory[slot]).ToArray();
+            // Add newly pressed keys to the input stack
+            HotkeyState.Select((state, keyIndex) => (state > 1 && slotItems[keyIndex].type > 0) ? keyIndex : -1).Where(slot => slot > -1).Reverse().ToList().ForEach(inputStack.Push);
+            //inputStack.DebugMe();
 
-            UpdateSlotQueue();
 
-            // If queuedslot is -1 or lower, obviously control over controlUseItem should be relinquished to the rest of the event pipeline.
             if (HasQueuedAction)
             {
-                // "Release" the use key if we're in the middle of using and another item is next so that the next item can be used.
-                if (IsCurrentlySwinging && queuedSlot != lastUsedSlot)
+                var nextKey = inputStack.Peek();
+                var nextSlot = slotDefs[nextKey];
+                var nextItem = slotItems[nextKey];
+
+                // "Release" the use key if we're in the middle of using so that the next item can be used.
+                if (IsCurrentlySwinging && nextSlot != SelectedSlot)
                     player.controlUseItem = false;
-                else
-                    UseItem(queuedSlot);
+                else {
+                    // If we don't have an original selection, then we're holding the key for a slot selected normally.
+                    // We shouldn't ignore the input just because we could have used the left mouse, so we use that sucker!
+                    if(nextSlot != SelectedSlot || !HasOriginalSelection)
+                    {
+                        UseItem(nextSlot);
+                    } else if(!IsReusableItem(nextItem))
+                    {
+                        inputStack.Pop();
+                    }
+                    PopDeadKeys(slotItems);
+                }
             }
             else
             {
                 // Also let go of the button if we're about to go back to the original slot so that it can resume swinging if necessary.
                 if (HasOriginalSelection && IsCurrentlySwinging)
                     player.controlUseItem = false;
-
-                lastReusableSlot = -1; 
             }
 
             return true;
+        }
+
+        private void PopDeadKeys(Item[] slotItems)
+        {
+            while (HasQueuedAction)
+            {
+                if (HotkeyState[inputStack.Peek()] < 1)
+                    // Get rid of the input if the key is no longer held and it was a reusable item.
+                    inputStack.Pop();
+                else
+                    break;
+            }
         }
 
         /// <summary>
@@ -171,48 +180,34 @@ namespace CombatHotkeys
         /// <param name="slot">Slot containing the item to be used.</param>
         private void UseItem(int slot)
         {
-            if (!HasOriginalSelection)
-                OriginalSelection = SelectedItem;
+            // If we already have the slot selected then we don't need to set original selection.
+            if (!HasOriginalSelection && slot != SelectedSlot)
+                OriginalSelection = SelectedSlot;
 
-            SelectedItem = slot;
-            lastUsedSlot = SelectedItem;
-            if (Inventory[SelectedItem].autoReuse)
-                lastReusableSlot = SelectedItem;
+            SelectedSlot = slot;
             player.controlUseItem = true;
         }
 
-        /// <summary>
-        /// Determines which slot should be used next and sets the queued slot.
-        /// 
-        /// Uses the button that just got pressed, or the existing queued slot if it hasn't been used yet, or re-use the highest priority auto-swing item otherwise (priority is in order from the right of the hotbar to the left). 
-        /// </summary>
-        private void UpdateSlotQueue()
+        private bool IsReusableItem(Item item)
         {
-            var slotDefs = getMod().slotDefs;
-            var slotItems = slotDefs.Select(slot => Inventory[slot]).ToArray();
-
-            // Slots which only just got pressed get priority
-            var pressedSlotIndex = Array.FindIndex(HotkeyState.Select((state, keyIndex) => (state > 1 && slotItems[keyIndex].type > 0) ? slotDefs[keyIndex] : -1).ToArray(), slot => slot != -1);
-            // Then see if we can reuse any keypresses for auto-swinging weapons.
-            var reusedSlotIndex = Array.FindIndex(HotkeyState.Select((state, keyIndex) => { var slot = slotDefs[keyIndex]; return ShouldReuseSlot(state, keyIndex, slotItems, slot) ? slot : -1; }).ToArray(), slot => slot != -1);
-
-            // We have to do it this way because Array.Find will return 0 for not found, but 0 is a valid value!
-            var pressedSlot = pressedSlotIndex < 0 ? pressedSlotIndex : slotDefs[pressedSlotIndex];
-            var reusedSlot = reusedSlotIndex < 0 ? reusedSlotIndex : slotDefs[reusedSlotIndex];
-
-            // Use the button that just got pressed, or the queued slot if it hasn't been used yet, or re-use an auto-swing item otherwise.
-            queuedSlot = pressedSlot > -1 ? pressedSlot : queuedSlot != lastUsedSlot ? queuedSlot : reusedSlot;
+            return item.autoReuse || item.channel;
         }
 
-        private bool ShouldReuseSlot(int state, int keyIndex, Item[] slotItems, int slot)
-        {
-            if (HasLastReusableSlot)
-                return state == 1 && slot == lastReusableSlot;
-            else
-                return state == 1 && slotItems[keyIndex].type != 0 && (slotItems[keyIndex].autoReuse);
-        }
-
-
-
+        
     }
+
+    //static class DebugExt
+    //{
+    //    public static void DebugMe<T>(this Stack<T> stack)
+    //    {
+    //        if(stack.Count > 0) { 
+    //            var builder = new StringBuilder("Input stack: [");
+    //            foreach (var item in stack)
+    //            {
+    //                builder.Append(item.ToString() + ", ");
+    //            }
+    //            Debug.WriteLine(builder.Append("]").ToString());
+    //        }
+    //    }
+    //}
 }
