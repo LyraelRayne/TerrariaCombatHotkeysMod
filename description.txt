@@ -1,6 +1,6 @@
-Combat Hotkeys adds four hotkeys that allow quick-using of the last 4 items on the hotbar.
+Combat Hotkeys adds hotkeys that allow quick-using of the last 6 items on the hotbar.
 
-Default key bindings are "C", "X", "Z", "Q".
+Default key bindings are "C", "X", "Z", "Q" (6, 7, 8 and 9) with the rest unbound.
 
 Mounts don't seem to work at the moment, other item types may also fail.
 
