@@ -127,7 +127,7 @@ namespace CombatHotkeys
             var slotItems = slotDefs.Select(slot => Inventory[slot]).ToArray();
             // Add newly pressed keys to the input stack
             HotkeyState.Select((state, keyIndex) => (state > 1 && slotItems[keyIndex].type > 0) ? keyIndex : -1).Where(slot => slot > -1).Reverse().ToList().ForEach(inputStack.Push);
-            //inputStack.DebugMe();
+           // inputStack.DebugMe();
 
 
             if (HasQueuedAction)
@@ -149,6 +149,9 @@ namespace CombatHotkeys
                     {
                         inputStack.Pop();
                     }
+                    // Either way we're doing something.
+                    player.controlUseItem = true;
+
                     PopDeadKeys(slotItems);
                 }
             }
@@ -185,7 +188,6 @@ namespace CombatHotkeys
                 OriginalSelection = SelectedSlot;
 
             SelectedSlot = slot;
-            player.controlUseItem = true;
         }
 
         private bool IsReusableItem(Item item)
@@ -196,18 +198,19 @@ namespace CombatHotkeys
         
     }
 
-    //static class DebugExt
-    //{
-    //    public static void DebugMe<T>(this Stack<T> stack)
-    //    {
-    //        if(stack.Count > 0) { 
-    //            var builder = new StringBuilder("Input stack: [");
-    //            foreach (var item in stack)
-    //            {
-    //                builder.Append(item.ToString() + ", ");
-    //            }
-    //            Debug.WriteLine(builder.Append("]").ToString());
-    //        }
-    //    }
-    //}
+    static class DebugExt
+    {
+        public static void DebugMe<T>(this Stack<T> stack)
+        {
+            if (stack.Count > 0)
+            {
+                var builder = new StringBuilder("Input stack: [");
+                foreach (var item in stack)
+                {
+                    builder.Append(item.ToString() + ", ");
+                }
+                Debug.WriteLine(builder.Append("]").ToString());
+            }
+        }
+    }
 }
