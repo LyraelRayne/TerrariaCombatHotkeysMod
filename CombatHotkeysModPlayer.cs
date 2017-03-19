@@ -10,7 +10,7 @@ using Terraria.ModLoader;
 
 namespace CombatHotkeys
 {
-    class CombatHotkeysMod : ModPlayer
+    class CombatHotkeysModPlayer : ModPlayer
     {
         private int[] _keyState;
         private int[] HotkeyState
@@ -19,7 +19,7 @@ namespace CombatHotkeys
             {
                 if (_keyState == null)
                 {
-                    var keys = getMod().hotKeys;
+                    var keys = Mod.hotKeys;
                     _keyState = new int[keys.Length];
                     for (var index = 0; index < keys.Length; index++)
                     {
@@ -113,17 +113,19 @@ namespace CombatHotkeys
 
         public override void ProcessTriggers(TriggersSet triggersSet)
         {
-            HotkeyState = getMod().hotKeys.Select((key, index) => key.JustPressed ? 2 : key.Current ? 1 : 0).ToArray();
+            HotkeyState = Mod.hotKeys.Select((key, index) => key.JustPressed ? 2 : key.Current ? 1 : 0).ToArray();
         }
 
-        private CombatHotkeys getMod()
+        private CombatHotkeysMod Mod
         {
-            return ((CombatHotkeys)mod);
+            get { 
+                return ((CombatHotkeysMod)mod);
+            }
         }
 
         public override bool PreItemCheck()
         {
-            var slotDefs = getMod().slotDefs;
+            var slotDefs = Mod.slotDefs;
             var slotItems = slotDefs.Select(slot => Inventory[slot]).ToArray();
             // Add newly pressed keys to the input stack
             HotkeyState.Select((state, keyIndex) => (state > 1 && slotItems[keyIndex].type > 0) ? keyIndex : -1).Where(slot => slot > -1).Reverse().ToList().ForEach(inputStack.Push);

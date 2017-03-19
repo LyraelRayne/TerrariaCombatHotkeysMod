@@ -3,13 +3,13 @@ using Terraria.ModLoader;
 
 namespace CombatHotkeys
 {
-	class CombatHotkeys : Mod
+	class CombatHotkeysMod : Mod
 	{
         public int[] slotDefs = { 4, 5, 6, 7, 8, 9 };
         private string[] slotDefaultKeys = { "F", "V", "C", "X", "Z", "Q" };
         public ModHotKey[] hotKeys;
 
-		public CombatHotkeys()
+		public CombatHotkeysMod()
 		{
 			Properties = new ModProperties()
 			{
