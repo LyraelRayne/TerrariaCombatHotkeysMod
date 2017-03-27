@@ -8,3 +8,5 @@ Currently known to work with placeable items and (AFAIK) all kinds of weapon.
 
 Note: Setting the hotkeys to number keys will prevent the mod from restoring your original item selection because Terraria hard-codes the number keys even if you turn off the keybind.
 
+Important: Version 1.0 of this mod will crash tmodloader on OSX. Make sure you get v1.1 which fixes the problem.
+

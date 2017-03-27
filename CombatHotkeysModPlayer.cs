@@ -34,6 +34,11 @@ namespace CombatHotkeys
             }
         }
 
+        public CombatHotkeysModPlayer()
+        {
+
+        }
+
         /// <summary>
         /// Place to store the originally selected item before hotkeys took effect.
         /// </summary>
@@ -200,19 +205,19 @@ namespace CombatHotkeys
         
     }
 
-    static class DebugExt
-    {
-        public static void DebugMe<T>(this Stack<T> stack)
-        {
-            if (stack.Count > 0)
-            {
-                var builder = new StringBuilder("Input stack: [");
-                foreach (var item in stack)
-                {
-                    builder.Append(item.ToString() + ", ");
-                }
-                Debug.WriteLine(builder.Append("]").ToString());
-            }
-        }
-    }
+    //static class DebugExt
+    //{
+    //    public static void DebugMe<T>(this Stack<T> stack)
+    //    {
+    //        if (stack.Count > 0)
+    //        {
+    //            var builder = new StringBuilder("Input stack: [");
+    //            foreach (var item in stack)
+    //            {
+    //                builder.Append(item.ToString() + ", ");
+    //            }
+    //            Debug.WriteLine(builder.Append("]").ToString());
+    //        }
+    //    }
+    //}
 }
