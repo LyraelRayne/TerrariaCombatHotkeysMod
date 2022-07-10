@@ -17,21 +17,18 @@ namespace CombatHotkeys
         {
             get
             {
-                if (_keyState == null)
+                if (_keyState != null) return _keyState;
+                
+                var keys = CHKMod.HotKeys;
+                var tempKeyState = new int[keys.Length];
+                for (var index = 0; index < keys.Length; index++)
                 {
-                    var keys = Mod.hotKeys;
-                    _keyState = new int[keys.Length];
-                    for (var index = 0; index < keys.Length; index++)
-                    {
-                        _keyState[index] = 0;
-                    }
+                    tempKeyState[index] = 0;
                 }
-                return _keyState;
+                _keyState = tempKeyState;
+                return tempKeyState;
             }
-            set
-            {
-                this._keyState = value;
-            }
+            set => _keyState = value;
         }
 
         public CombatHotkeysModPlayer()
@@ -44,14 +41,8 @@ namespace CombatHotkeys
         /// </summary>
         private int OriginalSelection
         {
-            get
-            {
-                return player.nonTorch;
-            }
-            set
-            {
-                player.nonTorch = value;
-            }
+            get => Player.nonTorch;
+            set => Player.nonTorch = value;
         }
 
         /// <summary>
@@ -59,14 +50,8 @@ namespace CombatHotkeys
         /// </summary>
         private int SelectedSlot
         {
-            get
-            {
-                return player.selectedItem;
-            }
-            set
-            {
-                player.selectedItem = value;
-            }
+            get => Player.selectedItem;
+            set => Player.selectedItem = value;
         }
 
         /// <summary>
@@ -76,7 +61,7 @@ namespace CombatHotkeys
         {
             get
             {
-                return inputStack.Count > 0;
+                return _inputStack.Count > 0;
             }
         }
 
@@ -98,7 +83,7 @@ namespace CombatHotkeys
         {
             get
             {
-                return player.itemAnimation > 0;
+                return Player.itemAnimation > 0;
             }
         }
 
@@ -106,46 +91,41 @@ namespace CombatHotkeys
         {
             get
             {
-                return player.inventory;
+                return Player.inventory;
             }
         }
 
         /// <summary>
         /// LIFO queue containing most recent valid inputs.
         /// </summary>
-        private Stack<int> inputStack = new Stack<int>(5);
+        private readonly Stack<int> _inputStack = new Stack<int>(5);
 
 
         public override void ProcessTriggers(TriggersSet triggersSet)
         {
-            HotkeyState = Mod.hotKeys.Select((key, index) => key.JustPressed ? 2 : key.Current ? 1 : 0).ToArray();
+            HotkeyState = CHKMod.HotKeys.Select((key, index) => key.JustPressed ? 2 : key.Current ? 1 : 0).ToArray();
         }
 
-        private CombatHotkeysMod Mod
-        {
-            get { 
-                return ((CombatHotkeysMod)mod);
-            }
-        }
+        private CombatHotkeysMod CHKMod => ((CombatHotkeysMod)Mod);
 
         public override bool PreItemCheck()
         {
-            var slotDefs = Mod.slotDefs;
+            var slotDefs = CHKMod.SlotDefs;
             var slotItems = slotDefs.Select(slot => Inventory[slot]).ToArray();
             // Add newly pressed keys to the input stack
-            HotkeyState.Select((state, keyIndex) => (state > 1 && slotItems[keyIndex].type > 0) ? keyIndex : -1).Where(slot => slot > -1).Reverse().ToList().ForEach(inputStack.Push);
+            HotkeyState.Select((state, keyIndex) => (state > 1 && slotItems[keyIndex].type > 0) ? keyIndex : -1).Where(slot => slot > -1).Reverse().ToList().ForEach(_inputStack.Push);
            // inputStack.DebugMe();
 
 
             if (HasQueuedAction)
             {
-                var nextKey = inputStack.Peek();
+                var nextKey = _inputStack.Peek();
                 var nextSlot = slotDefs[nextKey];
                 var nextItem = slotItems[nextKey];
 
                 // "Release" the use key if we're in the middle of using so that the next item can be used.
                 if (IsCurrentlySwinging && nextSlot != SelectedSlot)
-                    player.controlUseItem = false;
+                    Player.controlUseItem = false;
                 else {
                     // If we don't have an original selection, then we're holding the key for a slot selected normally.
                     // We shouldn't ignore the input just because we could have used the left mouse, so we use that sucker!
@@ -154,10 +134,10 @@ namespace CombatHotkeys
                         UseItem(nextSlot);
                     } else if(!IsReusableItem(nextItem))
                     {
-                        inputStack.Pop();
+                        _inputStack.Pop();
                     }
                     // Either way we're doing something.
-                    player.controlUseItem = true;
+                    Player.controlUseItem = true;
 
                     PopDeadKeys(slotItems);
                 }
@@ -166,7 +146,7 @@ namespace CombatHotkeys
             {
                 // Also let go of the button if we're about to go back to the original slot so that it can resume swinging if necessary.
                 if (HasOriginalSelection && IsCurrentlySwinging)
-                    player.controlUseItem = false;
+                    Player.controlUseItem = false;
             }
 
             return true;
@@ -176,9 +156,9 @@ namespace CombatHotkeys
         {
             while (HasQueuedAction)
             {
-                if (HotkeyState[inputStack.Peek()] < 1)
+                if (HotkeyState[_inputStack.Peek()] < 1)
                     // Get rid of the input if the key is no longer held and it was a reusable item.
-                    inputStack.Pop();
+                    _inputStack.Pop();
                 else
                     break;
             }
